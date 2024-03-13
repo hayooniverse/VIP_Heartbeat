@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Webcam Heart Rate Monitor</title>
+    <link rel="stylesheet" href="style.css">
+    <script defer src="https://pyscript.net/latest/pyscript.js"></script>
+</head>
+<body>
+    <py-config>
+    packages = ["numpy", "opencv-python"]
+    </py-config>
+
+    <h1>Webcam Heart Rate Monitor</h1>
+    <video id="webcam" autoplay></video>
+    <canvas id="canvas"></canvas> <!-- For drawing the webcam feed or processed frames -->
+    <p id="heart-rate-display">Calculating BPM...</p>
+
+    <py-script src="heart_rate_monitor.py"></py-script>
+</body>
+</html>
