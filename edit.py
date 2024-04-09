@@ -56,7 +56,8 @@ videoFrameRate = 15
 font = cv2.FONT_HERSHEY_SIMPLEX
 loadingTextLocation = (videoWidth-20, 30)
 fontScale = 1
-fontColor = (255,255,255)
+# fontColor = (255,255,255)
+fontColor = (0,0,0)
 lineType = 2
 boxColor = (0, 255, 0)
 boxWeight = 3
@@ -114,6 +115,7 @@ with mp_pose.Pose(
 
     currentTime = time.time()
     elapsedTime = currentTime - startTime
+    image = cv2.flip(image, 1)
 
     if elapsedTime < 5:
         #Landmark Coords & Frame Calculation
@@ -142,14 +144,8 @@ with mp_pose.Pose(
 
         # Build Gaussian Pyramid
         gauss_pyramid = buildGauss(roi1_resized, levels+1)
-
-        # Extract the desired level - Here, ensure the level you want is the last one
         desired_level = gauss_pyramid[levels]
-
-        # Resize the desired level back to the size of roi1_resized
         desired_level_resized = cv2.resize(desired_level, (240, 135))  # Ensuring size matches videoGauss
-
-        # Now, store it into videoGauss
         videoGauss[bufferIndex] = desired_level_resized
 
         fourierTransform = np.fft.fft(videoGauss, axis=0)
@@ -184,13 +180,15 @@ with mp_pose.Pose(
             cv2.circle(image, circle_center, circle_radius, color, -1)  # -1 thickness makes the circle filled
 
         else:
-            cv2.putText(image, "Calculating BPM...", loadingTextLocation, font, fontScale, fontColor, lineType)
+            cv2.putText(image, "Calm Down...", loadingTextLocation, font, fontScale, fontColor, lineType)
 
         # Exit on ESC
         if cv2.waitKey(5) & 0xFF == 27:
             break
     # Flip the image horizontally for a selfie-view display.
     cv2.rectangle(image, (x1, y1), (x2, y2), boxColor, boxWeight)
-    cv2.imshow('MediaPipe Pose', cv2.flip(image, 1))
+    # cv2.imshow('MediaPipe Pose', cv2.flip(image, 1))
+    cv2.imshow('MediaPipe Pose', image)
+
 cap.release()
 cv2.destroyAllWindows()
