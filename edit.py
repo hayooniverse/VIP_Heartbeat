@@ -25,17 +25,21 @@ def reconstructFrame(pyramid, index, levels, videoHeight, videoWidth):
 
 def calculate_color(bpm):
     if bpm < 70:
-        return (0, 0, 0)  # Black
+        return (0, 0, 0)  # Black for BPM less than 70
     elif bpm >= 70 and bpm < 80:
-        return (255, 0, 0)   # Blue
+        return (75, 0, 130)  # Indigo for BPM 70-79
     elif bpm >= 80 and bpm < 90:
-        return (0, 255, 0)  # Green
+        return (138, 43, 226)  # Violet for BPM 80-89
     elif bpm >= 90 and bpm < 100:
-        return (0, 255, 255)  # Yellow
-    elif bpm >= 100 and bpm < 120:
-        return (0, 165, 255)  # Orange
+        return (0, 0, 255)  # Blue for BPM 90-99
+    elif bpm >= 100 and bpm < 110:
+        return (0, 255, 0)  # Green for BPM 100-109
+    elif bpm >= 110 and bpm < 120:
+        return (255, 255, 0)  # Yellow for BPM 110-119
+    elif bpm >= 120 and bpm < 130:
+        return (255, 127, 0)  # Orange for BPM 120-129
     else:
-        return (0, 0, 255)  # Red
+        return (255, 0, 0)  # Red for BPM 130 and above
 
 # Color Magnification Parameters
 levels = 3
@@ -54,13 +58,15 @@ videoFrameRate = 15
 
 # Output Display Parameters
 font = cv2.FONT_HERSHEY_SIMPLEX
-loadingTextLocation = (videoWidth-20, 30)
-fontScale = 1
-# fontColor = (255,255,255)
+loadingTextLocation = (videoWidth-20, 100)
+fontScale = 2
 fontColor = (0,0,0)
+fontThickness = 3
+shadowColor = (255, 255, 255)
 lineType = 2
 boxColor = (0, 255, 0)
 boxWeight = 3
+timeTextLocation = (1500,100)
 
 # Heart Rate Calculation Variables
 bpmCalculationFrequency = 15
@@ -76,7 +82,7 @@ mask = (frequencies >= minFrequency) & (frequencies <= maxFrequency)
 cap = cv2.VideoCapture(0)
 videoWidth = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 videoHeight = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-bpmTextLocation = (videoWidth-150, 30)
+bpmTextLocation = (videoWidth-800, 100)
 
 #Initialize Gaussian Pyramid
 firstFrame = np.zeros((videoHeight, videoWidth, videoChannels))
@@ -96,14 +102,13 @@ with mp_pose.Pose(
       print("Ignoring empty camera frame.")
       # If loading a video, use 'break' instead of 'continue'.
       continue
-
+    image = cv2.flip(image, 1)
     image.flags.writeable = False
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     results = pose.process(image)
     videoHeight, videoWidth, image_depth = image.shape
     if not results.pose_landmarks:
       continue
-
     # Draw the pose annotation on the image.
     image.flags.writeable = True
     image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
@@ -115,9 +120,15 @@ with mp_pose.Pose(
 
     currentTime = time.time()
     elapsedTime = currentTime - startTime
-    image = cv2.flip(image, 1)
+    
+    # Pink header!
+    headerBackgroundColor = (193, 182, 255)
+    headerHeight = 150
+    cv2.rectangle(image, (0, 0), (videoWidth, headerHeight), headerBackgroundColor, -1)
+    headerTextLocation = (10, headerHeight - 15)
+    cv2.putText(image, "How long can you go without blinking?", loadingTextLocation, font, fontScale, fontColor, fontThickness, lineType)
 
-    if elapsedTime < 5:
+    if elapsedTime < 3:
         #Landmark Coords & Frame Calculation
         noseCoords_X = results.pose_landmarks.landmark[mp_pose.PoseLandmark.NOSE].x * videoWidth
         noseCoords_Y = results.pose_landmarks.landmark[mp_pose.PoseLandmark.NOSE].y * videoHeight
@@ -135,8 +146,17 @@ with mp_pose.Pose(
         y1 = math.floor(averageEye_Y - noseBridge_length)
         x2 = math.floor(rightEyeInner_X)
         y2 = math.floor(averageEye_Y)
-    
+        print(x1,y1,x2,y2)
+        # TIMER
+        timerSeconds = int(4-elapsedTime)
+        timerLocation = (900, 600)
+        timerFontScale = 6
+        textThickness = 10
+        cv2.putText(image, f"{timerSeconds}", timerLocation, font, timerFontScale, (0, 0, 255), textThickness, lineType)
+
     else:
+        elapsedSeconds = int(elapsedTime -3)
+        cv2.putText(image, f"{elapsedSeconds} s", timeTextLocation, font, fontScale, fontColor, lineType)
         #HEARTRATE CALCULATION
         #Construct ROI
         roi1 = image[min(x1,x2):max(x1,x2), min(y1,y2):max(y1,y2), :]
@@ -147,7 +167,6 @@ with mp_pose.Pose(
         desired_level = gauss_pyramid[levels]
         desired_level_resized = cv2.resize(desired_level, (240, 135))  # Ensuring size matches videoGauss
         videoGauss[bufferIndex] = desired_level_resized
-
         fourierTransform = np.fft.fft(videoGauss, axis=0)
 
         # Bandpass Filter
@@ -168,26 +187,24 @@ with mp_pose.Pose(
         filtered = filtered * alpha
         
         bufferIndex = (bufferIndex + 1) % bufferSize
-
+        
         #Output BPM
         if i > bpmBufferSize:
-            cv2.putText(image, "BPM: %d" % bpmBuffer.mean(), bpmTextLocation, font, fontScale, fontColor, lineType)
+            # cv2.putText(image, "BPM: %d" % bpmBuffer.mean(), bpmTextLocation, font, fontScale, fontColor, lineType)
             color = calculate_color(bpmBuffer.mean())
             # Define circle parameters
-            circle_center = (50, 50)  # Top-left corner for demonstration, adjust as needed
-            circle_radius = 20
+            circle_center = (200, 900)  # Top-left corner for demonstration, adjust as needed
+            circle_radius = 150
             # Draw the filled circle on the frame
             cv2.circle(image, circle_center, circle_radius, color, -1)  # -1 thickness makes the circle filled
+            bpmTextLocation = (60,920)
+            bpmFontScale = 1.8
+            cv2.putText(image, "BPM: %d" % bpmBuffer.mean(), bpmTextLocation, font, bpmFontScale, (255,255,255), lineType)
 
-        else:
-            cv2.putText(image, "Calm Down...", loadingTextLocation, font, fontScale, fontColor, lineType)
-
-        # Exit on ESC
-        if cv2.waitKey(5) & 0xFF == 27:
-            break
-    # Flip the image horizontally for a selfie-view display.
+    # Exit on ESC
+    if cv2.waitKey(5) & 0xFF == 27:
+        break
     cv2.rectangle(image, (x1, y1), (x2, y2), boxColor, boxWeight)
-    # cv2.imshow('MediaPipe Pose', cv2.flip(image, 1))
     cv2.imshow('MediaPipe Pose', image)
 
 cap.release()
